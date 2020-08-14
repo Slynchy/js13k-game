@@ -1,0 +1,25 @@
+{
+  "name": "js13k",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rollup -c -o dist/game.js",
+    "dev": "rollup -c -w -o dist/game.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "rollup": "^2.25.0",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-terser": "^7.0.0",
+    "rollup-plugin-typescript": "^1.0.1",
+    "tslib": "^2.0.1",
+    "typescript": "^3.9.7"
+  },
+  "dependencies": {
+    "kontra": "^7.0.0"
+  }
+}
