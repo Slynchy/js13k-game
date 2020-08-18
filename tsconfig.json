@@ -5,7 +5,7 @@
     "noImplicitAny": true,
     "moduleResolution": "node",
     "module": "commonjs",
-    "target": "es6",
+    "target": "ES2017",
     "jsx": "react-native",
     "allowJs": true,
     "sourceMap": true,

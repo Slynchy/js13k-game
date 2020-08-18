@@ -9,8 +9,26 @@ export default {
         resolve({
             kontra: true
         }),
-        terser({
-
-        })
+        // terser({
+        //     toplevel: true,
+        //     compress: {
+        //         arguments: true,
+        //         booleans_as_integers: true,
+        //         ecma: 2017,
+        //         passes: 3,
+        //         unsafe: true,
+        //         unsafe_arrows: true,
+        //         unsafe_Function: true,
+        //         unsafe_math: true,
+        //         unsafe_methods: true,
+        //         unsafe_proto: true,
+        //         unsafe_symbols: true
+        //     },
+        //     mangle: {
+        //         toplevel: true,
+        //         eval: true
+        //     }
+        //
+        // })
     ]
 }
