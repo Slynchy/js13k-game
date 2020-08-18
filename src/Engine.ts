@@ -17,22 +17,27 @@ export default class Engine {
     constructor() {
         const canvas: HTMLCanvasElement = document.getElementById("mainCanvas") as HTMLCanvasElement;
         canvas.width = 480, canvas.height = 272;
-        const {context} = init();
+        const {context}: {context: CanvasRenderingContext2D} = init();
         this.canvas = canvas;
         this.context = context;
         // this.context.scale(0.5, 0.5);
         this.loop = GameLoop({
-            update: (dt) => this.update(dt),
-            render: () => this.render()
+            update: (dt: number): void => this.update(dt),
+            render: (): void => this.render()
         });
         initKeys();
     }
 
+    public blackAndWhite(enabled: boolean): void {
+        this.canvas.style.filter = enabled ? "grayscale(100%)" : "";
+    }
+
     public removeObj(obj: Sprite | Text): void {
-        let i: number = this.scene.findIndex((e) => {
+        const i: number = this.scene.findIndex((e: Text | Sprite) => {
+            // tslint:disable-next-line:triple-equals
             return e == obj;
         });
-        if(i==-1) throw new Error();
+        if(i===-1) throw new Error();
         this.scene.splice(i, 1);
     }
 

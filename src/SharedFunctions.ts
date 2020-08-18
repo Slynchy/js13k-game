@@ -13,8 +13,8 @@ export function onUpdate(): {add: Function, remove: Function} {
 }
 
 export function update(dt: number): void {
-    for(const prop in this._onUpdate){
-        if(this._onUpdate.hasOwnProperty(prop)){
+    for(const prop in this._onUpdate) {
+        if(this._onUpdate.hasOwnProperty(prop)) {
             this._onUpdate[prop].call(this, dt);
         }
     }

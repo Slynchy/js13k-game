@@ -9,9 +9,31 @@ import {
 const engine: Engine = new Engine();
 const mp: {x: number, y: number} = {x: 480 / 2, y: 272 / 2}; // midpoint
 const ts: number = 1000; // threshold
-let sss: number = 0.6; // slowmo speedscale
-const dss: number = 1.5; // default speedscale
-let css: number = dss; // current speedscale
+
+/**
+ * key map for input to graphic
+ */
+const keys: {[key: string]: string} = {
+    up:"↑",
+    down:"↓",
+    right:"→",
+    left: "←"
+};
+
+/**
+ * slowmo speedscale
+ */
+const sss: number = 0.2;
+
+/**
+ * default speedscale
+ */
+const dss: number = 1.5;
+
+/**
+ * Current speedscale
+ */
+let css: number = dss;
 
 let sTime: number = 0;
 let cTime: number = 0;
@@ -20,14 +42,14 @@ let enemy: Sprite;
 let player: Sprite;
 let vStop: boolean = false;
 
-const timeline: {t: number, e: string}[] = [
+const timeline: Array<{t: number, e: string}> = [
     {
         t: 2000, // 2 seconds in
         e: "atk"
     }
 ];
 
-const urls = [
+const urls: string[] = [
     "assets/parallax-demon-woods-far-trees.png",
     "assets/parallax-demon-woods-mid-trees.png",
     "assets/parallax-demon-woods-close-trees.png",
@@ -35,32 +57,34 @@ const urls = [
     "assets/badguy/Run.png"
 ];
 engine.loader.add(urls);
-engine.loader.load().then((obj) => {
+engine.loader.load().then((obj: {[key: string]: HTMLImageElement}) => {
     sTime = Date.now();
 
-    for(let i=0;i<3;i++){
-        let s = new Sprite({
+    for(let i: number = 0; i < 3; i++) {
+        const s: Sprite = new Sprite({
+            y: 25,
             image: obj[urls[i]]
         });
         engine.scene.push(s);
-        let s_1 = new Sprite({
+        const s_1: Sprite = new Sprite({
             x: s.width,
+            y: 25,
             anchor: {x: 0, y: 0},
             image: obj[urls[i]]
         });
-        s.onUpdate.add(function(e: number) { t(this, s_1, (1 - (1 / (i+1))) * 66, e)});
+        s.onUpdate.add(function(e: number): void { t(this, s_1, (1 - (1 / (i+1))) * 66, e);});
         engine.scene.push(s_1);
     }
-    function t(x,y,s,e) {
+    function t(x: Sprite, y: Sprite, s: number, e: number): void {
         x.x -= s * e * css;
         y.x -= s * e * css;
-        if(x.x <= -(x.width)) {
+        if(x.x <= -(x.width * x.scaleX)) {
             x.x = 0;
-            y.x = x.width;
+            y.x = x.width * x.scaleX;
         }
     }
 
-    let spriteSheet: SpriteSheet = SpriteSheet({
+    const spriteSheet: SpriteSheet = SpriteSheet({
         image: obj[urls[3]],
         frameWidth: 200,
         frameHeight: 200,
@@ -69,15 +93,15 @@ engine.loader.load().then((obj) => {
         animations: {
             // create 1 animation: idle
             idle: {
-                frames: '0..7',  // frames 0 through 9
+                frames: "0..7",  // frames 0 through 9
                 frameRate: 12
             },
             idle_slow: {
-                frames: '0..7',
+                frames: "0..7",
                 frameRate: 3
             },
             die: {
-                frames: '8..14',
+                frames: "8..14",
                 frameRate: 10,
                 loop: false
             }
@@ -90,7 +114,7 @@ engine.loader.load().then((obj) => {
         animations: spriteSheet.animations
     });
     player.dead = false;
-    player.onUpdate.add(function() {
+    player.onUpdate.add(function(): void {
         cTime = Date.now() - sTime;
 
         const e: {t: number, e: string} = timeline[0];
@@ -114,31 +138,31 @@ engine.loader.load().then((obj) => {
         } else if (keyPressed("d")) {
             slowmo(false, [enemy, player]);
         }
-    })
+    });
     engine.scene.push(player);
 
-    let spriteSheetBadguy: SpriteSheet = SpriteSheet({
+    const spriteSheetBadguy: SpriteSheet = SpriteSheet({
         image: obj[urls[4]],
         frameWidth: 200,
         frameHeight: 200,
         animations: {
             idle: {
-                frames: '0..7',
+                frames: "0..7",
                 frameRate: 12
             },
             idle_slow: {
-                frames: '0..7',
+                frames: "0..7",
                 frameRate: 3
             },
             atk: {
-                frames: '8..12',
+                frames: "8..12",
                 frameRate: 10,
                 loop: false
             }
         }
     });
 
-    let sv=480+50;
+    const sv: number = 480+50;
     enemy = new Sprite({
         x: sv,
         y: 250,
@@ -148,7 +172,7 @@ engine.loader.load().then((obj) => {
     });
     enemy.scaleX = -1;
     engine.scene.push(enemy);
-    enemy.onUpdate.add(function(e: number) {
+    enemy.onUpdate.add(function(e: number): void {
         if(!this.active) return;
         this.x -= 45 * e * (!player.dead ? css : 1);
         if(!player.dead && this.x <= player.x + 60) {
@@ -164,59 +188,138 @@ engine.loader.load().then((obj) => {
     engine.start();
 });
 
-function createButtons(): void {
-    const keys: {[key: string]: string} = {
-        "up":"↑",
-        "down":"↓",
-        "right":"→",
-        "left": "←"
-    };
+async function createButtons(): Promise<void> {
+    // setup
+    await fade(true, null, 2)
+        .then((sprite: Sprite) => {
+            engine.blackAndWhite(true);
+            return fade(false, sprite, 1);
+        });
+    const enemyPos: number = enemy.x;
 
-    let target = new Text({
+    // consts
+    const duration: number = 1200;
+    const xOffset: number = 100;
+    const yOffset: number = 15;
+
+    // first slow everything
+    // then show the pattern
+    // then reset to old position and normal speed
+    // player then has to enter the combo or die
+    slowmo(true, [player, enemy]);
+
+    // generate order
+    const objKeys: string[] = Object.keys(keys);
+    const order: string[] = [];
+    const rand: number = 0;
+    for(let i: number = 0; i < Math.ceil(rand + 5); i++) {
+        order.push(objKeys[Math.floor(Math.random() * objKeys.length)]);
+    }
+
+    let counter: number = 0;
+    for(let i: number = 0; i < order.length; i++) {
+        const delay: number = (500 + duration) * i;
+        let text: Text = new Text({
+            text: keys[order[i]],
+            font: "18px MS Gothic",
+            color: "#FFFFFF00",
+            alpha: 0,
+            x: xOffset + (Math.random() * (480 - (xOffset * 2))),
+            y: yOffset + (Math.random() * 75),
+            anchor: {x: 0.5, y: 0.5},
+            textAlign: "center"
+        });
+        engine.scene.push(text);
+        let updateFunctionId: string;
+        const updateFunction: Function = function(e: Text): void {
+            if(!this._timer) {
+                this._timer = Date.now();
+                return;
+            }
+            if (!this.direction) {
+                this.alpha = Math.min((Date.now() - this._timer), duration) / duration;
+                this.scaleX = this.scaleY = this.alpha + 1;
+            } else {
+                this.alpha = 1 - (((Date.now() - duration) - this._timer) / duration);
+                this.scaleX = this.scaleY = this.alpha*2;
+            }
+            if(this.alpha === 1 && !this.direction) {
+                this.direction = true;
+            } else if(this.alpha === 0 && this.direction) {
+                // destroy
+                engine.removeObj(text);
+                text.onUpdate.remove(updateFunctionId);
+                text = null;
+                counter++;
+                if(counter === order.length) {
+                    finish();
+                }
+            }
+        };
+        setTimeout((): void => {
+            updateFunctionId = text.onUpdate.add(updateFunction);
+        }, delay);
+
+        async function finish(): Promise<void> {
+            await fade(true, null, 2.5)
+                .then((sprite: Sprite) => {
+                    engine.blackAndWhite(false);
+                    enemy.x = enemyPos;
+                    slowmo(false, [enemy, player]);
+                    return fade(false, sprite, 1.25);
+                });
+        }
+    }
+
+}
+
+function createButtonsOld(): void {
+
+    let target: Text = new Text({
         text: "O",
-        font: '12px Arial',
+        font: "12px Arial",
         color: "#FFFFFFAA",
         x: mp.x + 2,
         y: mp.y,
         anchor: {x: 0.5, y: 0.5},
-        textAlign: 'center'
+        textAlign: "center"
     });
     target.setScale(2.5,2.5);
     engine.scene.push(target);
 
-    let i = -1;
-    let order = [];
-    let objKeys = Object.keys(keys);
-    for(let i = 0; i < Math.ceil(Math.random() * 20); i++) {
+    let i: number = -1;
+    const order: string[] = [];
+    const objKeys: string[] = Object.keys(keys);
+    for(let o: number = 0; o < Math.ceil(Math.random() * 20); o++) {
         order.push(objKeys[Math.floor(Math.random() * objKeys.length)]);
     }
 
-    for(let k of order) {
+    for(const k of order) {
         i++;
-        const p = (-60 - (order.length - (i+1))) + (24 * i);
-        let text = new Text({
+        const p: number = (-60 - (order.length - (i+1))) + (24 * i);
+        let text: Text = new Text({
             text: keys[k],
-            font: '12px MS Gothic',
+            font: "12px MS Gothic",
             color: "#FFFFFF00",
             x: 240,
             y: p,
             anchor: {x: 0.5, y: 0.5},
-            textAlign: 'center'
+            textAlign: "center"
         });
         let id: string;
-        id = text.onUpdate.add(function(e: number) {
-            let d: number = 45 * e; // distance to travel
+        id = text.onUpdate.add(function(e: number): void {
+            const d: number = 45 * e; // distance to travel
             this.y += d;
-            const dbp = mp.y - p; // distanceBetweenPoints
-            const fur = dbp / d; // framesUntilReach
-            const cfur = (mp.y - text.y) / d; // currFramesUntilReach
-            const msur = Math.round((cfur / (e))); // millisecondsUntilReach
+            const dbp: number = mp.y - p; // distanceBetweenPoints
+            const fur: number = dbp / d; // framesUntilReach
+            const cfur: number = (mp.y - text.y) / d; // currFramesUntilReach
+            const msur: number = Math.round((cfur / (e))); // millisecondsUntilReach
 
             if(msur > (-ts * 4) && msur < (ts * 4)) {
-                let col = (
+                let col: string = (
                     255 - Math.round((Math.abs(msur) / (ts * 4)) * 255)
                 ).toString(16);
-                if(col.length == 1) col = "0" + col;
+                if(col.length === 1) col = "0" + col;
                 text.color = "#FFFFFF" + col;
             }
 
@@ -228,7 +331,7 @@ function createButtons(): void {
                 del();
             }
 
-            function del() {
+            function del(): void {
                 text.onUpdate.remove(id);
                 engine.removeObj(text);
                 text = null;
@@ -244,10 +347,10 @@ function createButtons(): void {
 }
 
 function slowmo(enabled: boolean, objs: Sprite[]): void {
-    objs.forEach((a) => {
+    objs.forEach((a: Sprite) => {
         a.playAnimation(enabled ? "idle_slow" : "idle");
     });
-    if(enabled) css = sss
+    if(enabled) css = sss;
     else css = dss;
 }
 
@@ -263,7 +366,32 @@ function stop(): void {
     vStop = true;
 }
 
-
-
-
-
+function fade(out: boolean, target?: Sprite, speed?: number): Promise<Sprite> {
+    return new Promise<Sprite>((resolve: Function): void => {
+        const sprite: Sprite = target || new Sprite({
+            anchor: {x: 0, y: 0},
+            width: 480,
+            height: 272,
+            color: "#FFFFFF00"
+        });
+        if(!target) {
+            sprite.alpha = 0;
+            engine.scene.push(sprite);
+        }
+        let str: string;
+        str = sprite.onUpdate.add(function(dt: number): void {
+            if(out) {
+                if(sprite.alpha < 1) (sprite.alpha += (speed || 0.2) * dt);
+                else fin();
+                console.log(sprite.alpha);
+            } else {
+                if(sprite.alpha > 0) (sprite.alpha -= (speed || 0.2) * dt);
+                else fin();
+            }
+            function fin(): void {
+                sprite.onUpdate.remove(str);
+                resolve(sprite);
+            }
+        });
+    });
+}

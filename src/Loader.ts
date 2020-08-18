@@ -9,8 +9,9 @@ export default class Loader {
 
     public load(): Promise<{ [key: string]: HTMLImageElement }> {
         const retVal: { [key: string]: HTMLImageElement } = {};
-        return new Promise<{ [key: string]: HTMLImageElement }>(async (res, rej) => {
-            const promises: Promise<void>[] = [];
+        return new Promise<{ [key: string]: HTMLImageElement }>
+        (async (res: Function/*, rej: Function*/): Promise<void> => {
+            const promises: Array<Promise<void>> = [];
             this.queue.forEach((e: string) => {
                 retVal[e] = new Image();
                 retVal[e].src = e;
@@ -21,7 +22,8 @@ export default class Loader {
         });
 
         function createImagePromise(img: HTMLImageElement): Promise<void> {
-            return new Promise((resolve) => (img.onload = () => resolve()));
+            return new Promise
+            ((resolve: Function): void => (img.onload = (): void => resolve() as void) as unknown as void);
         }
     }
 }
