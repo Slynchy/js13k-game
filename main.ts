@@ -10,6 +10,27 @@ const engine: Engine = new Engine();
 const mp: {x: number, y: number} = {x: 480 / 2, y: 272 / 2}; // midpoint
 const ts: number = 1000; // threshold
 
+const anims: object = {
+    idle: {
+        frames: "0..7",  // frames 0 through 9
+        frameRate: 12
+    },
+    idle_slow: {
+        frames: "0..7",
+        frameRate: 3
+    },
+    die: {
+        frames: "8..14",
+        frameRate: 10,
+        loop: false
+    },
+    atk: {
+        frames: "16..18",
+        frameRate: 10,
+        loop: false
+    }
+};
+
 /**
  * key map for input to graphic
  */
@@ -17,7 +38,11 @@ const keys: {[key: string]: string} = {
     up:"↑",
     down:"↓",
     right:"→",
-    left: "←"
+    left: "←",
+    a: "A",
+    s: "S",
+    d: "D",
+    f: "F",
 };
 
 /**
@@ -54,63 +79,52 @@ const urls: string[] = [
     "assets/parallax-demon-woods-mid-trees.png",
     "assets/parallax-demon-woods-close-trees.png",
     "assets/goodguy/Run.png",
-    "assets/badguy/Run.png"
+    // "assets/badguy/Run.png"
 ];
 engine.loader.add(urls);
 engine.loader.load().then((obj: {[key: string]: HTMLImageElement}) => {
     sTime = Date.now();
 
     for(let i: number = 0; i < 3; i++) {
-        const s: Sprite = new Sprite({
-            y: 25,
-            image: obj[urls[i]]
-        });
-        engine.scene.push(s);
-        const s_1: Sprite = new Sprite({
-            x: s.width,
-            y: 25,
-            anchor: {x: 0, y: 0},
-            image: obj[urls[i]]
-        });
-        s.onUpdate.add(function(e: number): void { t(this, s_1, (1 - (1 / (i+1))) * 66, e);});
-        engine.scene.push(s_1);
+        const sprites: Sprite[] = [];
+        for(let l: number = 0; l < 3; l++) {
+            const s: Sprite = new Sprite({
+                x: (296 * 2) * l,
+                y: 25,
+                anchor: {x: 0, y: 0},
+                scaleX: 2,
+                scaleY: 2,
+                image: obj[urls[i]]
+            });
+            engine.scene.push(s);
+            sprites.push(s);
+        }
+        sprites[0].onUpdate.add(function(e: number): void { t(sprites, (1 - (1 / (i+1))) * 66, e);});
     }
-    function t(x: Sprite, y: Sprite, s: number, e: number): void {
-        x.x -= s * e * css;
-        y.x -= s * e * css;
-        if(x.x <= -(x.width * x.scaleX)) {
-            x.x = 0;
-            y.x = x.width * x.scaleX;
+    function t(x: Sprite[], s: number, e: number): void {
+        for(let i: number = 0; i < x.length; i++) {
+            const c: Sprite = x[i];
+            c.x -= s * e * css;
+            if(c.x <= -(c.width * c.scaleX)) {
+                c.x = (c.width * c.scaleX) * i;
+            }
         }
     }
 
     const spriteSheet: SpriteSheet = SpriteSheet({
         image: obj[urls[3]],
-        frameWidth: 200,
-        frameHeight: 200,
+        frameWidth: 100,
+        frameHeight: 100,
 
         // this will also call createAnimations()
-        animations: {
-            // create 1 animation: idle
-            idle: {
-                frames: "0..7",  // frames 0 through 9
-                frameRate: 12
-            },
-            idle_slow: {
-                frames: "0..7",
-                frameRate: 3
-            },
-            die: {
-                frames: "8..14",
-                frameRate: 10,
-                loop: false
-            }
-        }
+        animations: anims
     });
     player = new Sprite({
         anchor: {x: 0.5, y: 0.5},
         x: 160,
         y: 244,
+        scaleX: 2,
+        scaleY: 2,
         animations: spriteSheet.animations
     });
     player.dead = false;
@@ -124,7 +138,6 @@ engine.loader.load().then((obj: {[key: string]: HTMLImageElement}) => {
                 case "atk":
                     enemy.active = true;
                     setTimeout(() => {
-                        slowmo(true, [player, enemy]);
                         createButtons();
                     }, 2500);
                     break;
@@ -142,35 +155,22 @@ engine.loader.load().then((obj: {[key: string]: HTMLImageElement}) => {
     engine.scene.push(player);
 
     const spriteSheetBadguy: SpriteSheet = SpriteSheet({
-        image: obj[urls[4]],
-        frameWidth: 200,
-        frameHeight: 200,
-        animations: {
-            idle: {
-                frames: "0..7",
-                frameRate: 12
-            },
-            idle_slow: {
-                frames: "0..7",
-                frameRate: 3
-            },
-            atk: {
-                frames: "8..12",
-                frameRate: 10,
-                loop: false
-            }
-        }
+        image: obj[urls[3]],
+        frameWidth: 100,
+        frameHeight: 100,
+        animations: anims
     });
 
     const sv: number = 480+50;
     enemy = new Sprite({
         x: sv,
-        y: 250,
+        y: 244,
+        scaleX: -2,
+        scaleY: 2,
         active: false,
         anchor: {x: 0.5, y: 0.5},
         animations: spriteSheetBadguy.animations
     });
-    enemy.scaleX = -1;
     engine.scene.push(enemy);
     enemy.onUpdate.add(function(e: number): void {
         if(!this.active) return;
@@ -192,6 +192,7 @@ async function createButtons(): Promise<void> {
     // setup
     await fade(true, null, 2)
         .then((sprite: Sprite) => {
+            slowmo(true, [player, enemy]);
             engine.blackAndWhite(true);
             return fade(false, sprite, 1);
         });
@@ -357,12 +358,12 @@ function slowmo(enabled: boolean, objs: Sprite[]): void {
 function stop(): void {
     css = 0;
     player.playAnimation("idle");
-    setTimeout(() => player.playAnimation("die"), 500);
+    setTimeout(() => player.playAnimation("die"), 350);
     enemy.playAnimation("atk");
     setTimeout(() => {
         enemy.playAnimation("idle");
         enemy.active=player.dead=true;
-    }, 600);
+    }, 350);
     vStop = true;
 }
 
@@ -383,7 +384,6 @@ function fade(out: boolean, target?: Sprite, speed?: number): Promise<Sprite> {
             if(out) {
                 if(sprite.alpha < 1) (sprite.alpha += (speed || 0.2) * dt);
                 else fin();
-                console.log(sprite.alpha);
             } else {
                 if(sprite.alpha > 0) (sprite.alpha -= (speed || 0.2) * dt);
                 else fin();
