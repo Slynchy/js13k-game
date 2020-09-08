@@ -7,9 +7,10 @@ export default class Loader {
         Array.isArray(url) ? this.queue.push(...url) : this.queue.push(url);
     }
 
-    public load(): Promise<{ [key: string]: HTMLImageElement }> {
-        const retVal: { [key: string]: HTMLImageElement } = {};
-        return new Promise<{ [key: string]: HTMLImageElement }>
+    public load(): Promise<Record<string, HTMLImageElement>> {
+        const retVal: Record<string, HTMLImageElement> = {};
+        if(this.queue.length === 0) return Promise.resolve({});
+        return new Promise<Record<string, HTMLImageElement>>
         (async (res: Function/*, rej: Function*/): Promise<void> => {
             const promises: Array<Promise<void>> = [];
             this.queue.forEach((e: string) => {

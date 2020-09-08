@@ -2,14 +2,12 @@ import {Text as KText} from "kontra";
 import {GameObject} from "kontra/kontra";
 import {onUpdate, update} from "./SharedFunctions";
 
-// tslint:disable-next-line:max-line-length class-name no-any
-interface args {text: string; font?: string; color?: string; width?: number; textAlign?: string; lineHeight?: number; x?: number; y?: number; height?: number; context?: CanvasRenderingContext2D; dx?: number; dy?: number; ddx?: number; ddy?: number; ttl?: number; anchor?: {x: number, y: number}; sx?: number; sy?: number; children?: GameObject[]; opacity?: number; rotation?: number; scaleX?: number; scaleY?: number; update?: (dt?: number) => void; render?: Function; [props: string]: any;}
-
 export default class Text extends KText.class {
 
     private _alpha: number;
 
-    constructor(props: args) {
+    // tslint:disable-next-line:no-any max-line-length
+    constructor(props: {text: string; font?: string; color?: string; width?: number; textAlign?: string; lineHeight?: number; x?: number; y?: number; height?: number; context?: CanvasRenderingContext2D; dx?: number; dy?: number; ddx?: number; ddy?: number; ttl?: number; anchor?: {x: number, y: number}; sx?: number; sy?: number; children?: GameObject[]; opacity?: number; rotation?: number; scaleX?: number; scaleY?: number; update?: (dt?: number) => void; render?: Function; [props: string]: any;}) {
         super(props);
     }
 

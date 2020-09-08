@@ -1,22 +1,25 @@
 import {
     GameLoop,
-    init,
-    initKeys,
-    Text
+    init, initPointer,
+    // initKeys,
+    Button,
+    Text, Grid
 } from "kontra/kontra";
 import Sprite from "./Sprite";
 import Loader from "./Loader";
 
 export default class Engine {
+    public readonly width: number;
+    public readonly height: number;
     public canvas: HTMLCanvasElement;
     public context: CanvasRenderingContext2D;
     public loop: GameLoop;
     public loader: Loader = new Loader();
-    public scene: Array<Text | Sprite> = [];
+    public scene: Array<Grid | Button | Text | Sprite> = [];
 
     constructor() {
         const canvas: HTMLCanvasElement = document.getElementById("mainCanvas") as HTMLCanvasElement;
-        canvas.width = 480, canvas.height = 272;
+        canvas.width = this.width = 480, canvas.height = this.height = 272;
         const {context}: {context: CanvasRenderingContext2D} = init();
         this.canvas = canvas;
         this.context = context;
@@ -25,7 +28,8 @@ export default class Engine {
             update: (dt: number): void => this.update(dt),
             render: (): void => this.render()
         });
-        initKeys();
+        // initKeys();
+        initPointer();
     }
 
     public blackAndWhite(enabled: boolean): void {
