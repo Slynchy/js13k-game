@@ -25,3 +25,15 @@ body {
     image-rendering: optimize-contrast;         /* CSS3 Proposed                  */
     -ms-interpolation-mode: nearest-neighbor;   /* IE8+                           */
 }
+
+#crtOverlay {
+    opacity: 60%;
+    z-index: 9999;
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    width: 960px; /* 480 */
+    height: 544px; /* 272 */
+    transform: translateX(-50%) translateY(-50%);
+    pointer-events: none;
+}

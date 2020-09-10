@@ -4,13 +4,22 @@ import Text from "./Text";
 
 export type IGrid = Array<Array<{button: Button, text: Text, type: GridTypes}>>;
 
+export type GameState = LevelFormat & {
+    variables: {
+        SCORE: number;
+        CURR_UPS: number;
+    }
+};
+
 export interface LevelFormat {
     width: number;
     height: number;
+    targetScore: number;
+    upAllowance: number;
+    goals: GridTypes[][]; // length equal to height
     contents: LevelContents;
 }
 
 export interface LevelContents {
     grid: GridTypes[][];
-    goals: GridTypes[][]; // length equal to height
 }

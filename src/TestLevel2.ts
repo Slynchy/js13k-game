@@ -1,9 +1,9 @@
 import {LevelFormat} from "./Interfaces";
 
-export const TestLevel: LevelFormat = {
+export const TestLevel2: LevelFormat = {
     width: 9,
     height: 12,
-    targetScore: 30,
+    targetScore: 5,
     upAllowance: 10,
     contents: {
         grid: [
@@ -14,11 +14,11 @@ export const TestLevel: LevelFormat = {
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 4, 1, 0],
             [0, 0, 0, 0, 0, 0, 1, 4, 4],
-            [1, 4, 0, 4, 4, 0, 1, 4, 2],
-            [3, 4, 3, 4, 4, 4, 1, 4, 2],
-            [2, 4, 3, 2, 2, 4, 2, 4, 3],
-            [3, 4, 2, 2, 4, 3, 1, 3, 3],
-            [1, 2, 1, 1, 3, 1, 1, 1, 1]
+            [4, 4, 4, 4, 4, 0, 1, 4, 2],
+            [4, 4, 4, 4, 4, 4, 1, 4, 2],
+            [4, 4, 4, 4, 4, 4, 2, 4, 3],
+            [4, 4, 4, 4, 4, 3, 1, 3, 3],
+            [4, 4, 4, 4, 4, 1, 1, 1, 1]
         ]
     },
     goals: [
@@ -32,7 +32,7 @@ export const TestLevel: LevelFormat = {
         [3],
         [4],
         [3,4],
-        [1,3],
-        [1,3]
+        [2,4],
+        [2,4]
     ]
 };
