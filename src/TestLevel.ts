@@ -5,6 +5,22 @@ export const TestLevel: LevelFormat = {
     height: 12,
     targetScore: 30,
     upAllowance: 10,
+    dialogue: [
+        // {text: "こんにちは\n\nこれは私の\n世界です\n\nよろしく。", face: "NORMAL"},
+        // {text: "これは、\n\n私を作った\nゲームです", face: "LOOK_LEFT"},
+        // {text: "でも…", face: "NORMAL"},
+        // {text: "誰も\n\nい・な・い\n\nです！", face: "UPSET"},
+        // {text: "もし\nよかったら\n\n手伝いくれ\nませんか？", face: "SAD"},
+        // {text: "ありがとう\nございます\n!!!!!!!!", face: "HAPPY"},
+        // {text: "Firstly,\nthis game\nis about\ncollecting\npoints.", face: "NORMAL"},
+        // {text: "You gain\npoints by\nclicking on\noccupied\ntiles.", face: "NORMAL"},
+        // {text: "This moves\nthe tile\nup.", face: "NORMAL"},
+        // {text: "If the\nsymbol on\nthe left\nmatches the\ntile...", face: "NORMAL"},
+        // {text: "...Then\nit will\nturn green\nand give\na point.", face: "NORMAL"},
+        // {text: "Simply\nclick a\nyellow\ntile to\nremove it\nagain.", face: "NORMAL"},
+        // {text: "Your goal\nis to reach\nthe target\nscore,\non the\ntop-right.", face: "NORMAL"},
+        {text: "Give it a\ntry!!!", face: "HAPPY"}
+    ],
     contents: {
         grid: [
             [0, 0, 0, 0, 0, 0, 0, 0, 0],

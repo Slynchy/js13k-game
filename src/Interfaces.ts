@@ -16,6 +16,10 @@ export interface LevelFormat {
     height: number;
     targetScore: number;
     upAllowance: number;
+    dialogue?: Array<{
+        text: string;
+        face: string; // key
+    }>;
     goals: GridTypes[][]; // length equal to height
     contents: LevelContents;
 }

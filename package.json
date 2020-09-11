@@ -22,6 +22,7 @@
     "typescript": "^3.9.7"
   },
   "dependencies": {
+    "js-easing-functions": "^1.0.3",
     "kontra": "^7.0.0"
   }
 }

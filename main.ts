@@ -11,9 +11,9 @@ async function main(): Promise<void> {
     const GAME: Game = new Game(ENGINE, TestLevel);
     ENGINE.start();
 
-    setTimeout(() => {
-        GAME.loadNewLevel(TestLevel2);
-    }, 5000);
+    // setTimeout(() => {
+    //     GAME.loadNewLevel(TestLevel);
+    // }, 2000);
 }
 
 main();

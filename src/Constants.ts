@@ -12,8 +12,10 @@ export const TYPES: string[] = [
     "地",
     "風",
     "🡹",
+    "  "
 ];
 export const URLS: string[] = [
     "./assets/button.png",
-    "./assets/button_y.png"
+    "./assets/button_y.png",
+    "./assets/speechbubble.png"
 ];

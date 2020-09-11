@@ -6,5 +6,6 @@ export enum GridTypes {
     TYPE3,
     TYPE4,
     UP,
+    UNDEFINED,
     LENGTH
 }

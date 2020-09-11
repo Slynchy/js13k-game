@@ -3,7 +3,7 @@ import {
     init, initPointer,
     // initKeys,
     Button,
-    Text, Grid
+    Text, Grid, GameObject
 } from "kontra/kontra";
 import Sprite from "./Sprite";
 import Loader from "./Loader";
@@ -15,8 +15,11 @@ export default class Engine {
     public context: CanvasRenderingContext2D;
     public loop: GameLoop;
     private loader: Loader = new Loader();
-    public scene: Array<Grid | Button | Text | Sprite> = [];
+    public scene: Array<Grid | Button | Text | Sprite | GameObject> = [];
     private assets: Record<string, HTMLImageElement>;
+
+    private savedDataEvent: boolean;
+    private savedData: object = {};
 
     constructor() {
         const canvas: HTMLCanvasElement = document.getElementById("mainCanvas") as HTMLCanvasElement;
@@ -28,6 +31,23 @@ export default class Engine {
         this.loop = this.createGameLoop();
         // initKeys();
         initPointer();
+        this.loadSave();
+    }
+
+    private loadSave(): void {
+        this.savedData = JSON.parse(window.localStorage.getItem("404sl") || "{}");
+    }
+
+    public save(newData: object, skipSave?: boolean): void {
+        this.savedData = Object.assign(this.savedData, newData);
+
+        if(!this.savedDataEvent && !skipSave) {
+            this.savedDataEvent = true;
+            setTimeout((): void => {
+                window.localStorage.setItem("404sl", JSON.stringify(this.savedData));
+                this.savedDataEvent = false;
+            }, 1000);
+        }
     }
 
     public add(url: string | string[]): void {
