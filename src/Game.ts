@@ -4,47 +4,81 @@ import Sprite from "./Sprite";
 import Engine from "./Engine";
 import {GridTypes} from "./Enums";
 import {Button, lerp} from "kontra/kontra";
-import {DEBUG_MODE, MP, TYPE_OFFSET, TYPES, URLS} from "./Constants";
+import {DEBUG_MODE, LEVEL_EDIT_MODE, MP, TYPE_OFFSET, TYPES, URLS} from "./Constants";
 import {playMusic} from "./PlayMusic";
 import {Chatbot} from "./ChatBot";
 
 export class Game {
-    private static readonly maxWidth: number = 15;
-    private static readonly maxHeight: number = 12;
+    public static readonly maxWidth: number = 15;
+    public static readonly maxHeight: number = 12;
 
     private GAME_STATE: GameState;
     private ENGINE_REF: Engine;
     private GRID: IGrid;
     private SCORE_ELEMENT: Text;
+    private LEVEL_ID_ELEMENT: Text;
     private TARGET_ELEMENT: Text;
     private SCORE_BAR: Sprite;
-    private GOAL_ELEMENTS: Text[];
+    private GOAL_ELEMENTS: Text[][];
     private UP_BLOCKS: Sprite[] = [];
-    private static isPlayingMusic: boolean = false;
-    private static BlockInputReasons: Record<string, boolean> = {};
+    public static isPlayingMusic: boolean = false;
     // private blockInput: boolean = false;
 
     private chatBot: Chatbot;
 
-    constructor(_engine: Engine, _level: LevelFormat) {
+    private initializeGameState(_level: LevelFormat): void {
         this.GAME_STATE = Object.assign({
             variables: {
                 SCORE: 0,
                 CURR_UPS: _level.upAllowance
             }
         }, _level);
+
+        while(this.GAME_STATE.goals.length < Game.maxHeight) {
+            this.GAME_STATE.goals.unshift(new Array(2).fill(GridTypes.EMPTY));
+        }
+
+        while(this.GAME_STATE.contents.grid.length < Game.maxHeight) {
+            this.GAME_STATE.contents.grid.unshift(
+                new Array(this.GAME_STATE.width).fill(GridTypes.EMPTY)
+                    .concat(
+                        new Array(Game.maxWidth - this.GAME_STATE.width).fill(GridTypes.UNDEFINED)
+                    )
+            );
+        }
+        // tslint:disable-next-line:prefer-for-of
+        for(let y: number = 0; y < this.GAME_STATE.contents.grid.length; y++) {
+            while(this.GAME_STATE.contents.grid[y].length < Game.maxWidth) {
+                this.GAME_STATE.contents.grid[y].push(GridTypes.UNDEFINED);
+            }
+        }
+    }
+
+    constructor(_engine: Engine, _level: LevelFormat, autoStart?: boolean) {
+        this.initializeGameState(_level);
         this.ENGINE_REF = _engine;
         this.ENGINE_REF.scene.push(this.SCORE_ELEMENT = Game.createScoreElement(this.GAME_STATE.width));
         this.ENGINE_REF.scene.push(
             this.TARGET_ELEMENT = Game.createTargetElement(this.GAME_STATE.targetScore, this.GAME_STATE.width)
         );
+        this.ENGINE_REF.scene.push(
+            this.LEVEL_ID_ELEMENT = Game.createLevelIDElement(this.GAME_STATE.levelId, this.GAME_STATE.width)
+        );
         // ENGINE.scene.push(SCORE_BAR = createScoreBarElement());
-        this.ENGINE_REF.scene.push(...(this.GOAL_ELEMENTS = Game.createGoalElements(this.GAME_STATE)));
+        this.GOAL_ELEMENTS = Game.createGoalElements(this, this.GAME_STATE);
+        // tslint:disable-next-line:prefer-for-of
+        for(let y: number = 0; y < this.GOAL_ELEMENTS.length; y++) {
+            // tslint:disable-next-line:prefer-for-of
+            for(let x: number = 0; x < this.GOAL_ELEMENTS[y].length; x++) {
+                this.ENGINE_REF.scene.push(this.GOAL_ELEMENTS[y][x]);
+            }
+        }
         this.UP_BLOCKS.push(
             ...Game.createUpBlocks(
                 this.GAME_STATE.upAllowance,
                 this.ENGINE_REF.getAsset("./assets/button_y.png"),
-                this.GAME_STATE.width
+                this.GAME_STATE.width,
+                this.GAME_STATE.height
             )
         );
         this.UP_BLOCKS.forEach((e: Sprite) => this.ENGINE_REF.scene.push(e));
@@ -76,37 +110,109 @@ export class Game {
             }
         );
 
-        this.chatBot.addToQueue(this.GAME_STATE.dialogue);
-        Game.BlockInputReasons.TutorialPlaying = true;
-        _engine.scene.push(this.chatBot);
-        setTimeout(() => {
-            this.chatBot.play(false).then(() => {
-                Game.BlockInputReasons.TutorialPlaying = false;
-                setTimeout(() => {
-                    this.chatBot.addToQueue([
-                        {
-                            text: "this\nis\na\ntest!!"
-                        }
-                    ]);
-                    this.chatBot.play(true);
-                }, 2000);
-            });
-        }, 800);
+        if(autoStart) {
+            this.start();
+        } else {
+            Engine.BlockInputReasons.PlayNotYetStarted = true;
+        }
         this.updateGameViewToReflectGameState();
         this.updateGridColors();
     }
 
-    private static playMusic(): void {
+    public static createLevelIDElement(_levelId: string, _levelWidth: number): Text {
+        return new Text({
+            x: (MP.x * 2) + (-10 * ((Game.maxWidth - _levelWidth) + 1)) - 20,
+            y: 12,
+            anchor: {x: 1, y: 0},
+            text: `レベル ${_levelId}`,
+            color: "#FFFFFFAA",
+            textAlign: "center",
+            font: "10px MS Gothic"
+        });
+    }
+
+    public start(skipTutorial?: boolean): void {
+        Engine.BlockInputReasons.PlayNotYetStarted = false;
+
+        this.chatBot.addToQueue(this.GAME_STATE.dialogue);
+        if(!this.ENGINE_REF.isInScene(this.chatBot)) this.ENGINE_REF.scene.push(this.chatBot);
+
+        if(skipTutorial || !this.GAME_STATE.dialogue || this.GAME_STATE.dialogue.length === 0) {
+            return;
+        } else {
+            Engine.BlockInputReasons.TutorialPlaying = true;
+        }
+
+        setTimeout(() => {
+            this.chatBot.play(false).then(() => {
+                Engine.BlockInputReasons.TutorialPlaying = false;
+                // setTimeout(() => {
+                //     this.chatBot.addToQueue([
+                //         {
+                //             text: "this\nis\na\ntest!!"
+                //         }
+                //     ]);
+                //     this.chatBot.play(true);
+                // }, 2000);
+            });
+        }, 800);
+    }
+
+    public showOrHide(hide: boolean): void {
+        // private GRID: IGrid;
+        // private SCORE_ELEMENT: Text;
+        // private TARGET_ELEMENT: Text;
+        // private SCORE_BAR: Sprite;
+        // private GOAL_ELEMENTS: Text[];
+        // private UP_BLOCKS: Sprite[] = [];
+        const hideOffset: number = 2000;
+        for(let y: number = 0; y < Game.maxHeight; y++) {
+            if(hide) {
+                this.UP_BLOCKS[y].x -= hideOffset;
+            } else {
+                this.UP_BLOCKS[y].x += hideOffset;
+            }
+            for(let x: number = 0; x < Game.maxWidth; x++) {
+                if(hide) {
+                    this.GRID[y][x].button.x -= hideOffset;
+                    this.GRID[y][x].text.x -= hideOffset;
+                } else {
+                    this.GRID[y][x].button.x += hideOffset;
+                    this.GRID[y][x].text.x += hideOffset;
+                }
+            }
+        }
+
+        // tslint:disable-next-line:prefer-for-of
+        for(let i: number = 0; i < this.GOAL_ELEMENTS.length; i++) {
+            // tslint:disable-next-line:prefer-for-of
+            for(let g: number = 0; g < this.GOAL_ELEMENTS[i].length; g++) {
+                const curr: Text = this.GOAL_ELEMENTS[i][g];
+                if (hide) {
+                    curr.x -= hideOffset;
+                } else {
+                    curr.x += hideOffset;
+                }
+            }
+        }
+
+        if(hide) {
+            this.SCORE_ELEMENT.x -= hideOffset;
+            this.TARGET_ELEMENT.x -= hideOffset;
+            this.chatBot.x -= hideOffset;
+        } else {
+            this.SCORE_ELEMENT.x += hideOffset;
+            this.TARGET_ELEMENT.x += hideOffset;
+            this.chatBot.x += hideOffset;
+        }
+    }
+
+    public static playMusic(): void {
         playMusic();
     }
 
     public loadNewLevel(_level: LevelFormat): void {
-        this.GAME_STATE = Object.assign({
-            variables: {
-                SCORE: 0,
-                CURR_UPS: _level.upAllowance
-            }
-        }, _level);
+        this.initializeGameState(_level);
 
         for(let i: number = 0; i < Game.maxHeight; i++) {
             if(i < this.GAME_STATE.upAllowance) {
@@ -114,45 +220,51 @@ export class Game {
             } else {
                 this.UP_BLOCKS[i].x = -50;
             }
+            this.UP_BLOCKS[i].y = (MP.y * 2) - (20 * i) - (29);
+        }
+
+        for(let i: number = 0; i < Game.maxHeight; i++) {
+            for (let g: number = 0; g < 2; g++) {
+                if(i < this.GAME_STATE.goals.length && g < this.GAME_STATE.goals[i].length) {
+                    this.GOAL_ELEMENTS[i][g].text = TYPES[this.GAME_STATE.goals[i][g] + 1];
+                } else {
+                    this.GOAL_ELEMENTS[i][g].text = " ";
+                }
+                this.GOAL_ELEMENTS[i][g].y = (23 + (20 * (Game.maxHeight - this.GAME_STATE.goals.length))) + (20 * (i));
+            }
         }
 
         this.SCORE_ELEMENT.x =
             this.TARGET_ELEMENT.x =
                 (MP.x * 2) + (-10 * ((Game.maxWidth - this.GAME_STATE.width) + 1));
+        this.LEVEL_ID_ELEMENT.x = this.SCORE_ELEMENT.x + (-20);
+        this.TARGET_ELEMENT.text = "目標: " + this.GAME_STATE.targetScore;
+        this.LEVEL_ID_ELEMENT.text = "レベル " + this.GAME_STATE.levelId;
 
         for(let y: number = 0; y < Game.maxHeight; y++) {
             for (let x: number = 0; x < Game.maxWidth; x++) {
                 const currButt: Button = this.GRID[y][x].button;
                 const currTxt: Text = this.GRID[y][x].text;
-                currButt.scaleX = currButt.scaleY = ((
-                    x >= this.GAME_STATE.width ||
-                    y >= this.GAME_STATE.height
-                ) ? 0 : 1);
+                // if(x >= this.GAME_STATE.width || y >= this.GAME_STATE.height) {
+                //     currButt.scaleX = currButt.scaleY = 0;
+                //     currTxt.scaleX = currTxt.scaleY = 0;
+                // } else {
+                //     currButt.scaleX = currButt.scaleY = 1;
+                //     currTxt.scaleX = currTxt.scaleY = 1;
+                // }
             }
         }
+
+        // tslint:disable-next-line:prefer-for-of
+        // for(let y: number = 0; y < this.GRID.length; y++) {
+        //     // tslint:disable-next-line:prefer-for-of
+        //     for (let x: number = 0; x < this.GRID[y].length; x++) {
+        //         this.GRID[y][x].text.y = this.GRID[y][x].button.y;
+        //     }
+        // }
 
         this.updateGameViewToReflectGameState();
         this.updateGridColors();
-    }
-
-    public close(): void {
-        // tslint:disable-next-line:prefer-for-of
-        for(let y: number = 0; y < this.GRID.length; y++) {
-            // tslint:disable-next-line:prefer-for-of
-            for(let x: number = 0; x < this.GRID[y].length; x++) {
-                this.ENGINE_REF.removeObj(this.GRID[y][x].text);
-                this.ENGINE_REF.removeObj(this.GRID[y][x].button);
-            }
-        }
-        this.GRID = null;
-        // this.UP_BLOCKS.forEach((e: Sprite) => {
-        //     this.ENGINE_REF.removeObj(e);
-        // });
-        // this.UP_BLOCKS = null;
-        this.GOAL_ELEMENTS.forEach((e: Text) => {
-            this.ENGINE_REF.removeObj(e);
-        });
-        this.GOAL_ELEMENTS = null;
     }
 
     private static createTargetElement(targetScore: number, _levelWidth: number): Text {
@@ -177,25 +289,65 @@ export class Game {
         });
     }
 
-    private static createGoalElements(_level: LevelFormat): Text[] {
-        const res: Text[] = [];
-        for(let i: number = 0; i < _level.goals.length; i++) {
-            for(let g: number = 0; g < _level.goals[i].length; g++) {
-                const txt: Text = new Text({
-                    x: 50 + (-25 * g),
-                    y: (23) + (20 * i),
-                    text: TYPES[(_level.goals[i][g] + 1)],
-                    color: "white",
-                    font: "17px MS Gothic",
-                    anchor: {x: 1, y: 0}
-                });
-                res.push(txt);
+    private static createGoalElements(_game: Game, _level: LevelFormat): Text[][] {
+        const res: Text[][] = [];
+        for(let i: number = 0; i < Game.maxHeight; i++) {
+            res.push([]);
+            for(let g: number = 0; g < 2; g++) {
+                let type: string;
+                if(i < _level.goals.length && g < _level.goals[i].length && _level.goals[i][g] !== GridTypes.EMPTY) {
+                    type = TYPES[(_level.goals[i][g] + 1)];
+                } else {
+                    type = " ";
+                }
+                let txt: Text;
+                if(LEVEL_EDIT_MODE) {
+                    txt = Button({
+                        x: 50 + (-25 * g),
+                        y: (23) + (20 * i),
+                        type: _level.goals[i][g],
+                        text: {
+                            text: TYPES[(_level.goals[i][g] + 1)],
+                            color: "white",
+                            font: "17px MS Gothic",
+                            anchor: {
+                                x: 1,
+                                y: 0,
+                            },
+                        },
+                        onUp(): void {
+                            console.log("AAA");
+                            _level.goals[i][g] += 1;
+                            if(_level.goals[i][g] === GridTypes.UP) {
+                                _level.goals[i][g] = GridTypes.EMPTY;
+                            }
+                            this.textNode.text = TYPES[(_level.goals[i][g] + 1)];
+                            _game.updateGridColors();
+                        },
+                        anchor: {x: 1, y: 0}
+                    }) as unknown as Text;
+                } else {
+                    txt = new Text({
+                        x: 50 + (-25 * g),
+                        y: (23 + (20 * (Game.maxHeight - _level.goals.length))) + (20 * (i)),
+                        text: type,
+                        color: "white",
+                        font: "17px MS Gothic",
+                        anchor: {x: 1, y: 0}
+                    });
+                }
+                res[i].push(txt);
             }
         }
         return res;
     }
 
-    private static createUpBlocks(upAllowance: number, upBlockImg: HTMLImageElement, levelWidth: number): Sprite[] {
+    private static createUpBlocks(
+        upAllowance: number,
+        upBlockImg: HTMLImageElement,
+        levelWidth: number,
+        levelHeight: number
+    ): Sprite[] {
         const res: Sprite[] = [];
         for(let i: number = 0; i < Game.maxHeight; i++) {
             const currUpBlockBg: Sprite = new Sprite({
@@ -207,7 +359,7 @@ export class Game {
             const currUpBlock: Sprite = new Sprite({
                 x: x,
                 _oldX: x,
-                y: (23) + (i * 20),
+                y: (MP.y * 2) - (20 * i) - (29),
                 image: upBlockImg
             });
             const currUpBlockText: Text = new Text({
@@ -230,12 +382,11 @@ export class Game {
         for(let y: number = 0; y < Game.maxHeight; y++) {
             retVal.push([]);
             for(let x: number = 0; x < Game.maxWidth; x++) {
-                const yOffset: number = 40;
                 let textObj: Text;
                 const position: {x: number, y: number} = {
                     // x: (0 - ((20 * _level.width) / 2)) + (20 * x) - 90,
                     x: 55 + (20 * x),
-                    y: yOffset + (20 * y)
+                    y: 40 + ((Game.maxHeight - _level.height) * 20) + (20 * y) - 20
                 };
 
                 const button: Button = new Button({
@@ -255,10 +406,14 @@ export class Game {
                 });
                 const text: string = Game.getText(x, y, _level);
                 const color: string = Game.getColor(x, y, _level);
+                let type: GridTypes = GridTypes.EMPTY;
+                if(x < _level.width && y < _level.height) {
+                    type =_level.contents.grid[y][x];
+                }
                 textObj = new Text({
-                    x: position.x + 10,
-                    y: position.y - 8,
-                    anchor: {x: 0.5, y: 0.5},
+                    x: position.x,
+                    y: position.y - 20,
+                    anchor: {x: -0.1, y: -0.35},
                     // image: obj[urls[0]],
                     width: 16,
                     height: 16,
@@ -266,7 +421,7 @@ export class Game {
                     // custom props
                     column: x,
                     row: y,
-                    type: _level.contents.grid[y][x] as GridTypes,
+                    type: type,
 
                     text,
                     color,
@@ -275,26 +430,11 @@ export class Game {
                 retVal[y].push({
                     button,
                     text: textObj,
-                    type: _level.contents.grid[y][x] as GridTypes
+                    type: type
                 });
-
-                if(x >= _level.width || y >= _level.height) {
-                    button.scaleX = button.scaleY = 0;
-                    textObj.scaleX = textObj.scaleY = 0;
-                }
             }
         }
         return retVal;
-    }
-
-    private isAllowedToInput(): boolean {
-        let thisisnotoptimal: boolean = true;
-        Object.keys(Game.BlockInputReasons).forEach((e: string) => {
-            if(Game.BlockInputReasons[e]) {
-                thisisnotoptimal = false;
-            }
-        });
-        return thisisnotoptimal;
     }
 
     private async onButtonPress(_x: number, _y: number): Promise<void> {
@@ -302,17 +442,23 @@ export class Game {
             console.log(`Button @ ${_x}, ${_y}`);
         }
 
+        const position: {x: number, y: number} = {
+            x: _x,
+            y: _y,
+        };
+
         if(
-            !this.isAllowedToInput()
+            !Engine.isAllowedToInput()
         ) {
             if(DEBUG_MODE) {
                 console.warn("do nothing because input is blocked");
+                console.warn(Engine.BlockInputReasons);
             }
             return;
         }
 
         if(
-            this.GAME_STATE.contents.grid[_y][_x] !== GridTypes.UP &&
+            this.GAME_STATE.contents.grid[position.y][position.x] !== GridTypes.UP &&
             this.GAME_STATE.variables.CURR_UPS === 0
         ) {
             if(DEBUG_MODE) {
@@ -322,7 +468,8 @@ export class Game {
         }
 
         if(
-            this.GAME_STATE.contents.grid[_y][_x] === GridTypes.EMPTY
+            this.GAME_STATE.contents.grid[position.y][position.x] === GridTypes.EMPTY &&
+            !LEVEL_EDIT_MODE
         ) {
             if(DEBUG_MODE) {
                 console.warn("do nothing because empty");
@@ -331,8 +478,10 @@ export class Game {
         }
 
         if(
-            this.GAME_STATE.contents.grid[0][_x] !== GridTypes.EMPTY
-            && this.GAME_STATE.contents.grid[_y][_x] !== GridTypes.UP
+            this.GAME_STATE.contents.grid[0][position.x] !== GridTypes.EMPTY
+            && this.GAME_STATE.contents.grid[0][position.x] !== GridTypes.UNDEFINED
+            && this.GAME_STATE.contents.grid[position.y][position.x] !== GridTypes.UP
+            && !LEVEL_EDIT_MODE
         ) {
             if(DEBUG_MODE) {
                 console.warn("Cannot move this higher");
@@ -340,64 +489,58 @@ export class Game {
             return;
         }
 
-        Game.BlockInputReasons.UpdatingGameState = true;
-        if(!Game.isPlayingMusic) {
-            Game.isPlayingMusic = true;
-            Game.playMusic();
+        Engine.BlockInputReasons.UpdatingGameState = true;
+
+        if(LEVEL_EDIT_MODE) {
+            this.GAME_STATE.contents.grid[position.y][position.x] += 1;
+            if(this.GAME_STATE.contents.grid[position.y][position.x] === GridTypes.UP) {
+                this.GAME_STATE.contents.grid[position.y][position.x] = GridTypes.WILDCARD;
+            }
+            this.updateGameViewToReflectGameState();
+            this.updateGridColors();
+        } else {
+            this.updateGameState(
+                position.x, position.y,
+                !(this.GAME_STATE.contents.grid[position.y][position.x] === GridTypes.UP)
+            );
+            await new Promise<void>((resolve: Function): void => {
+                const frametime: number = 33;
+                let id: number;
+                let progress: number = 0;
+                let stage: number = 0;
+                const textObj: Text = this.GRID[_y][_x].text;
+                if(DEBUG_MODE) console.log(textObj);
+                id = setInterval((): void => {
+                    switch(stage) {
+                        case 0:
+                            if(progress >= 1) {
+                                textObj.scaleX = 0;
+                                progress = 0;
+                                stage++;
+                                this.updateGameViewToReflectGameState();
+                                this.updateGridColors();
+                                return;
+                            }
+                            textObj.scaleX = lerp(1, 0, progress += 0.35);
+                            break;
+                        case 1:
+                            if(progress >= 1) {
+                                textObj.scaleX = 1;
+                                stage++;
+                                return;
+                            }
+                            textObj.scaleX = lerp(0, 1, progress += 0.35);
+                            break;
+                        case 2:
+                            clearInterval(id);
+                            resolve();
+                            break;
+                    }
+                }, frametime) as unknown as number;
+            });
         }
 
-        this.updateGameState(
-            _x, _y,
-            !(this.GAME_STATE.contents.grid[_y][_x] === GridTypes.UP)
-        );
-
-        await new Promise<void>((resolve: Function): void => {
-            const frametime: number = 33;
-            let id: number;
-            let progress: number = 0;
-            let stage: number = 0;
-            const textObj: Text = this.GRID[_y][_x].text;
-            if(DEBUG_MODE) console.log(textObj);
-            id = setInterval((): void => {
-                switch(stage) {
-                    case 0:
-                        if(progress >= 1) {
-                            textObj.scaleX = 0;
-                            progress = 0;
-                            stage++;
-                            this.updateGameViewToReflectGameState();
-                            this.updateGridColors();
-                            return;
-                        }
-                        textObj.scaleX = lerp(1, 0, progress += 0.35);
-                        break;
-                    case 1:
-                        if(progress >= 1) {
-                            textObj.scaleX = 1;
-                            stage++;
-                            return;
-                        }
-                        textObj.scaleX = lerp(0, 1, progress += 0.35);
-                        break;
-                    case 2:
-                        clearInterval(id);
-                        resolve();
-                        break;
-                }
-            }, frametime) as unknown as number;
-        });
-
-        delete Game.BlockInputReasons.UpdatingGameState;
-        //
-        // // tslint:disable-next-line:no-conditional-assignment
-        // // this.y += ((this.isUp = !this.isUp) ? -20 : 20);
-        // // this.y = yOffset + ((--this.row) * 20);
-        //
-        // for(let i: number = this.row; i >= 0; i--) {
-        //     GRID[i][this.column].button.y += -20;
-        //     GRID[i][this.column].button.y = Math.round(GRID[i][this.column].button.y);
-        // }
-        // updateGridColors();
+        Engine.BlockInputReasons.UpdatingGameState = false;
     }
 
     private updateGameState(_x: number, _y: number, _goingUp: boolean): void {
@@ -427,6 +570,15 @@ export class Game {
             // tslint:disable-next-line:prefer-for-of
             for(let x: number = 0; x < this.GAME_STATE.contents.grid[y].length; x++) {
                 // if(GAME_STATE.contents.grid[y][x] === GridTypes.EMPTY) ;
+                if(this.GAME_STATE.contents.grid[y][x] === GridTypes.EMPTY) {
+                    this.GRID[y][x].text.color = "#FFFFFF00";
+                    this.GRID[y][x].button.image = this.ENGINE_REF.getAsset(URLS[0]);
+                    continue;
+                } else if(this.GAME_STATE.contents.grid[y][x] === GridTypes.UNDEFINED) {
+                    this.GRID[y][x].button.image = null;
+                    this.GRID[y][x].text.color = "#FFFFFF00";
+                    continue;
+                }
                 const goals: number[] = this.GAME_STATE.goals[y];
                 let assetChangeNum: number = 0;
                 if(!this.GRID[y][x].text._oldPos) this.GRID[y][x].text._oldPos = {
@@ -438,8 +590,6 @@ export class Game {
                     this.GRID[y][x].text.color = "#00FF00";
                     this.GRID[y][x].text.x = this.GRID[y][x].text._oldPos.x;
                     this.GRID[y][x].text.y = this.GRID[y][x].text._oldPos.y;
-                } else if(this.GAME_STATE.contents.grid[y][x] === GridTypes.EMPTY) {
-                    this.GRID[y][x].text.color = "#FFFFFF00";
                 } else if(this.GAME_STATE.contents.grid[y][x] === GridTypes.UP) {
                     this.GRID[y][x].text.color = "#FFFF00";
                     this.GRID[y][x].text.x = this.GRID[y][x].text._oldPos.x - 1;
@@ -461,6 +611,13 @@ export class Game {
                 this.UP_BLOCKS[i].x = -50;
             }
         }
+
+        if(LEVEL_EDIT_MODE) return;
+        if(score >= this.GAME_STATE.targetScore) {
+            this.chatBot.showLevelEnd(this);
+        } else {
+            this.chatBot.hideLevelEnd();
+        }
     }
 
     private updateGameViewToReflectGameState(): void {
@@ -473,13 +630,15 @@ export class Game {
     }
 
     private static getText(x: number, y: number, _state: LevelFormat): string {
+        // if(x >= _state.width || y >= _state.height) return TYPES[(GridTypes.EMPTY+1)];
         return (_state.contents.grid[y][x] === GridTypes.EMPTY ?
-            TYPES[(GridTypes.EMPTY+1)]
+            (TYPES[(GridTypes.EMPTY+1)])
             :
-            TYPES[(_state.contents.grid[y][x] + TYPE_OFFSET)]) || TYPES[GridTypes.UNDEFINED+1];
+            (TYPES[(_state.contents.grid[y][x] + TYPE_OFFSET)])); // can never trigger || TYPES[GridTypes.UNDEFINED+1];
     }
 
     private static getColor(x: number, y: number, _state: LevelFormat): string {
+        // if(x >= _state.width || y >= _state.height) return "#FFFFFF00";
         return _state.contents.grid[y][x] === GridTypes.EMPTY ?
             "#FFFFFF00"
             :

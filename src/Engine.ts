@@ -7,6 +7,7 @@ import {
 } from "kontra/kontra";
 import Sprite from "./Sprite";
 import Loader from "./Loader";
+import {Game} from "./Game";
 
 export default class Engine {
     public static readonly width: number = 480;
@@ -18,6 +19,7 @@ export default class Engine {
     public scene: Array<Grid | Button | Text | Sprite | GameObject> = [];
     private assets: Record<string, HTMLImageElement>;
 
+    public static BlockInputReasons: Record<string, boolean> = {};
     private savedDataEvent: boolean;
     private savedData: object = {};
 
@@ -32,6 +34,16 @@ export default class Engine {
         // initKeys();
         initPointer();
         this.loadSave();
+    }
+
+    public static isAllowedToInput(): boolean {
+        let thisisnotoptimal: boolean = true;
+        Object.keys(Engine.BlockInputReasons).forEach((e: string) => {
+            if(Engine.BlockInputReasons[e]) {
+                thisisnotoptimal = false;
+            }
+        });
+        return thisisnotoptimal;
     }
 
     private loadSave(): void {
@@ -77,6 +89,12 @@ export default class Engine {
         this.scene.splice(i, 1);
     }
 
+    public isInScene(go: GameObject): boolean {
+        return (this.scene.findIndex(
+            (e: GameObject) => e === go
+        ) !== -1);
+    }
+
     public clearScene(): void {
         this.scene.length = 0;
     }
@@ -90,7 +108,7 @@ export default class Engine {
     }
 
     private update(dt: number): void {
-        this.scene.forEach((e: Sprite) => e.update(dt));
+        this.scene.forEach((e: GameObject) => e.update(dt));
     }
 
     public createGameLoop(): GameLoop {
@@ -115,6 +133,18 @@ export default class Engine {
     }
 
     private render(): void {
-        this.scene.forEach((e: Sprite | Text) => e.render());
+        this.scene.forEach((e: GameObject) => {
+            if(
+                (e.x - (e.width * e.anchor.x)) > Engine.width ||
+                (e.x + (e.width * e.anchor.x)) < 0 ||
+                (e.y - (e.height * e.anchor.y)) > Engine.height ||
+                (e.y + (e.height * e.anchor.y)) < 0
+            ) {
+                // console.log("not rendering");
+                return;
+            } else {
+                e.render();
+            }
+        });
     }
 }

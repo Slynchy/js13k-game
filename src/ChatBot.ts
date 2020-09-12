@@ -4,6 +4,8 @@ import Engine from "./Engine";
 import {DEBUG_MODE, URLS} from "./Constants";
 import Text from "./Text";
 import Easing from "./Easing";
+import {Game} from "./Game";
+import LevelOrder from "./LevelOrder";
 
 const faceParts: Record<string, string> = {
     Eye1: "E1",
@@ -69,6 +71,9 @@ export class Chatbot extends GameObject.class {
     }> = [];
 
     private canSkip: boolean = false;
+    private isOpen: boolean = false;
+
+    private closePromise: Promise<void>;
 
     private pointerUp: boolean = false;
 
@@ -116,10 +121,36 @@ export class Chatbot extends GameObject.class {
         };
         setTimeout(cb, 2000);
 
+        this.speechBubbleSprite.nextButton.textNode.color = "#00FFFF00";
         this.speechBubbleSprite.sprite.x = -999;
         // setTimeout(() => {
         //     this.changeLine("INTRO");
         // }, 1000);
+    }
+
+    public showLevelEnd(_game: Game): void {
+        if(this.showingLevelEnd) return;
+        this.addToQueue([
+            {
+                text: "できたよ！\n\nこの緑の\nボタンを\nくりっくし\nたら進む！\n:)",
+                face: "NORMAL"
+            },
+        ]);
+        this.speechBubbleSprite.nextButton.textNode.color = "#00FF00FF";
+        this.showingLevelEnd = true;
+        this.play(true).then(() => {
+            _game.loadNewLevel(LevelOrder.getNextLevel());
+            this.speechBubbleSprite.nextButton.textNode.color = "#00FFFFFF";
+            _game.start();
+        });
+    }
+
+    public hideLevelEnd(): void {
+        if(!this.showingLevelEnd) return;
+        this.speechBubbleSprite.nextButton.textNode.color = "#00FFFFFF";
+        this.showingLevelEnd = false;
+        this.queue.shift();
+        this.close(true);
     }
 
     public update(dt?: number): void {
@@ -140,6 +171,9 @@ export class Chatbot extends GameObject.class {
     }
 
     public async play(hideOverlay?: boolean): Promise<void> {
+        if(this.closePromise) await this.closePromise;
+        if(this.isOpen) return;
+        this.isOpen = true;
         this.speechBubbleSprite.sprite.x = -71;
         this.speechBubbleSprite.sprite.scaleX = 0;
 
@@ -174,7 +208,9 @@ export class Chatbot extends GameObject.class {
             await this.changeLine(line, face);
             this.queue.shift();
         }
-        this.close(hideOverlay);
+        this.closePromise = this.close(hideOverlay).then(() => {
+            this.closePromise = null;
+        });
     }
 
     public changeLine(line: string, face?: string): Promise<void> {
@@ -189,7 +225,8 @@ export class Chatbot extends GameObject.class {
                         this.pointerUp = false;
                         clearInterval(id);
                         this.speechBubbleSprite.text.text = line;
-                        this.speechBubbleSprite.nextButton.textNode.color = "#00FFFFFF";
+                        this.speechBubbleSprite.nextButton.textNode.color =
+                            this.speechBubbleSprite.nextButton.textNode.color.substr(0,7) + "FF";
                         this.canSkip = true;
                         this.resolveFunc = resolve;
                         return;
@@ -223,32 +260,37 @@ export class Chatbot extends GameObject.class {
         });
     }
 
-    private close(hideOverlay?: boolean): void {
+    private async close(hideOverlay?: boolean): Promise<void> {
         // elapsed, startPosition, endPosition, duration
+        if(!this.isOpen) return;
+        this.isOpen = false;
         let id: unknown;
         const startTime: number = Date.now();
         const duration: number = 1000;
-        id = setInterval((): void => {
-            const progress: number = Date.now() - startTime;
-            this.speechBubbleSprite.sprite.scaleX = Easing.easeOutQuad(progress, 1, -1, duration);
-            if(!hideOverlay) {
-                const colVal: string = (
-                    Math.round(
-                        Easing.easeOutQuad(progress, 102, -102, duration)
-                    )
-                ).toString(16);
-                this.overlayRef.color = `#000000${colVal.length === 1 ? "0"+colVal : colVal}`;
-            }
-            if(progress >= duration) {
-                // @ts-ignore
-                clearInterval(id);
-                if(!hideOverlay) this.overlayRef.color = "#00000000";
-                this.speechBubbleSprite.sprite.x = -999;
-                this.speechBubbleSprite.sprite.scaleX = 1;
-                this.speechBubbleSprite.text.text = " ";
-            }
-        }, 16);
         this.updateFacialExpression(facialExpressions.NORMAL);
+        await new Promise<void>((resolve: Function): void => {
+            id = setInterval((): void => {
+                const progress: number = Date.now() - startTime;
+                this.speechBubbleSprite.sprite.scaleX = Easing.easeOutQuad(progress, 1, -1, duration);
+                if(!hideOverlay) {
+                    const colVal: string = (
+                        Math.round(
+                            Easing.easeOutQuad(progress, 102, -102, duration)
+                        )
+                    ).toString(16);
+                    this.overlayRef.color = `#000000${colVal.length === 1 ? "0"+colVal : colVal}`;
+                }
+                if(progress >= duration) {
+                    // @ts-ignore
+                    clearInterval(id);
+                    if(!hideOverlay) this.overlayRef.color = "#00000000";
+                    this.speechBubbleSprite.sprite.x = -999;
+                    this.speechBubbleSprite.sprite.scaleX = 1;
+                    this.speechBubbleSprite.text.text = " ";
+                    resolve();
+                }
+            }, 16);
+        });
     }
 
     private continueText(): void {
@@ -259,7 +301,6 @@ export class Chatbot extends GameObject.class {
         if(this.resolveFunc) {
             this.resolveFunc();
             this.resolveFunc = null;
-            this.speechBubbleSprite.nextButton.textNode.color = "#00FFFF00";
         }
     }
 
