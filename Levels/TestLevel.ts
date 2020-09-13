@@ -7,8 +7,10 @@ export const TestLevel: LevelFormat = {
     targetScore: 30,
     upAllowance: 11,
     dialogue: [
-        {text: "次の\nレベルは、\nちょっと\n難しいと\n思うけど…", face: "HAPPY"},
-        {text: "でも、\n信じて\nいます!\n\n頑張ろう!", face: "HAPPY"}
+        {text: "ね…なぜ\n\n「みんな\nどこにい\nますか」と\n言わなか\nった？", face: "CONFUSED"},
+        {text: "まあ、\nそれはさー\n.......", face: "NORMAL"},
+        {text: "いつも\nゲームを\n開発して\nいたから…", face: "NORMAL"},
+        {text: "…みんな…\n\n死んでいた", face: "UPSET"},
     ],
     contents: {
         grid: [

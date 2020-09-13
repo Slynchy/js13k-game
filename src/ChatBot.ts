@@ -1,11 +1,14 @@
 import Sprite from "./Sprite";
 import {Button, GameObject, pointerPressed} from "kontra/kontra";
 import Engine from "./Engine";
-import {DEBUG_MODE, URLS} from "./Constants";
+import {DEBUG_MODE, mAnchor, MP, URLS} from "./Constants";
 import Text from "./Text";
 import Easing from "./Easing";
 import {Game} from "./Game";
 import LevelOrder from "./LevelOrder";
+import {LevelFormat} from "./Interfaces";
+import {MainMenu} from "./MainMenu";
+import {currLang, Localizations} from "./Localizations";
 
 const faceParts: Record<string, string> = {
     Eye1: "E1",
@@ -19,12 +22,16 @@ const eyes: Record<string, string> = {
     UPSET_R: "ᗕ",
     SAD_R: "ಥ",
     SAD_L: "ಥ",
+    CHILL: "˘",
     LOOK_L: "◕",
+    CONFUSED: "？",
+    HAPPY: "^",
     BLINK: "◡"
 };
 const mouths: Record<string, string> = {
     NORMAL: "‿",
     UPSET: "ᗣ",
+    HAPPY: "◡",
     SAD: "﹏"
 };
 interface FacialExpression { Eye1?: string; Eye2?: string; Mouth1?: string; disableBlink?: boolean; }
@@ -34,13 +41,31 @@ const facialExpressions: Record<string, FacialExpression> = {
         Eye2: eyes.NORMAL,
         Mouth1: mouths.NORMAL
     },
+    CHILL: {
+        Eye1: eyes.CHILL,
+        Eye2: eyes.CHILL,
+        Mouth1: mouths.NORMAL,
+        disableBlink: true
+    },
     BLINK: {
         Eye1: eyes.BLINK,
         Eye2: eyes.BLINK
     },
+    BLINK_2: {
+        Eye1: eyes.BLINK,
+        Eye2: eyes.BLINK,
+        Mouth1: mouths.NORMAL,
+        disableBlink: true,
+    },
     UPSET: {
         Eye1: eyes.UPSET_L,
         Eye2: eyes.UPSET_R,
+        Mouth1: mouths.UPSET,
+        disableBlink: true
+    },
+    CONFUSED: {
+        Eye1: eyes.CONFUSED,
+        Eye2: eyes.CONFUSED,
         Mouth1: mouths.UPSET,
         disableBlink: true
     },
@@ -54,6 +79,12 @@ const facialExpressions: Record<string, FacialExpression> = {
         Eye1: eyes.LOOK_L,
         Eye2: eyes.LOOK_L,
         Mouth1: mouths.NORMAL
+    },
+    HAPPY: {
+        Eye1: eyes.HAPPY,
+        Eye2: eyes.HAPPY,
+        Mouth1: mouths.NORMAL,
+        disableBlink: true,
     }
 };
 
@@ -132,16 +163,92 @@ export class Chatbot extends GameObject.class {
         if(this.showingLevelEnd) return;
         this.addToQueue([
             {
-                text: "できたよ！\n\nこの緑の\nボタンを\nくりっくし\nたら進む！\n:)",
+                text: Localizations.ChatBot_LevelEnd[currLang()],
                 face: "NORMAL"
             },
         ]);
         this.speechBubbleSprite.nextButton.textNode.color = "#00FF00FF";
         this.showingLevelEnd = true;
         this.play(true).then(() => {
-            _game.loadNewLevel(LevelOrder.getNextLevel());
-            this.speechBubbleSprite.nextButton.textNode.color = "#00FFFFFF";
-            _game.start();
+            // @ts-ignore
+            if(!window._SCORE_COUNTER) window._SCORE_COUNTER = 0;
+            // @ts-ignore
+            window._SCORE_COUNTER += _game.getScore();
+
+            const level: LevelFormat = LevelOrder.getNextLevel();
+            if(level) {
+                _game.loadNewLevel(level);
+                this.speechBubbleSprite.nextButton.textNode.color = "#00FFFFFF";
+                _game.start();
+            } else {
+                _game.showOrHide(true);
+
+                const text: Text = new Text({
+                    // @ts-ignore
+                    text: Localizations.ThanksForPlaying[currLang()] + window._SCORE_COUNTER.toString(),
+                    textAlign: "center",
+                    font: "22px MS Gothic",
+                    color: "white",
+                    x: MP.x,
+                    y: MP.y + 20,
+                    anchor: mAnchor
+                });
+                _game.getEngine().scene.push(text);
+
+                const stuff: {
+                    heading: Text,
+                    title: Text,
+                    subheading: Text
+                } = MainMenu.createTitle();
+                stuff.heading.x += MP.x;
+                stuff.title.x += MP.x;
+                stuff.subheading.x += MP.x;
+                stuff.heading.y += MP.y * 0.35;
+                stuff.title.y += MP.y * 0.35;
+                stuff.subheading.y += MP.y * 0.35;
+                _game.getEngine().scene.push(stuff.heading);
+                _game.getEngine().scene.push(stuff.title);
+                _game.getEngine().scene.push(stuff.subheading);
+
+                const url: string= "https://slynch.dev";
+                const button: Button = Button({
+                    x: MP.x,
+                    y: MP.y * 1.75,
+                    font: "22px MS Gothic",
+                    text: {
+                        text: url,
+                        color: "white",
+                        anchor: mAnchor,
+                        textAlign: "center"
+                    },
+                    onUp(): void {
+                        // tslint:disable-next-line
+                        var win = window.open(url, "_blank");
+                        win.focus();
+                    },
+                    anchor: mAnchor,
+                });
+                _game.getEngine().scene.push(button);
+
+                const url2: string= "https://twitter.com/Slynch2203";
+                const button2: Button = Button({
+                    x: MP.x,
+                    y: MP.y * 1.9,
+                    text: {
+                        text: "@Slynch2203",
+                        color: "white",
+                        anchor: mAnchor,
+                        textAlign: "center"
+                    },
+                    onUp(): void {
+                        // tslint:disable-next-line
+                        var win = window.open(url2, "_blank");
+                        win.focus();
+                    },
+                    anchor: mAnchor,
+                });
+                _game.getEngine().scene.push(button2);
+            }
         });
     }
 
@@ -309,7 +416,7 @@ export class Chatbot extends GameObject.class {
         const sprite: Sprite = new Sprite({
             x: -71,
             y: -115,
-            anchor: {x: 0.5, y: 0.5},
+            anchor: mAnchor,
             image: _engine.getAsset(URLS[2])
         });
         const text: Text =  new Text({

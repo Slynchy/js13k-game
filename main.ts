@@ -1,5 +1,5 @@
 import Engine from "./src/Engine";
-import {LEVEL_EDIT_MODE, MP, URLS} from "./src/Constants";
+import {DEBUG_MODE, LEVEL_EDIT_MODE, MP, URLS} from "./src/Constants";
 import {MainMenu} from "./src/MainMenu";
 import {Game} from "./src/Game";
 import {createBlankLevel} from "./src/Interfaces";
@@ -10,6 +10,9 @@ async function main(): Promise<void> {
     await ENGINE.load();
     if(LEVEL_EDIT_MODE) {
         const GAME: Game = new Game(ENGINE, createBlankLevel(), false);
+        if(DEBUG_MODE) { // @ts-ignore
+            window._GAME = game;
+        }
         GAME.start(true);
     } else {
         ENGINE.scene.push(new MainMenu(ENGINE, {

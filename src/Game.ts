@@ -4,8 +4,8 @@ import Sprite from "./Sprite";
 import Engine from "./Engine";
 import {GridTypes} from "./Enums";
 import {Button, lerp} from "kontra/kontra";
-import {DEBUG_MODE, LEVEL_EDIT_MODE, MP, TYPE_OFFSET, TYPES, URLS} from "./Constants";
-import {playMusic} from "./PlayMusic";
+import {DEBUG_MODE, LEVEL_EDIT_MODE, mAnchor, MP, TYPE_OFFSET, TYPES, URLS} from "./Constants";
+import {beep, playMusic} from "./PlayMusic";
 import {Chatbot} from "./ChatBot";
 
 export class Game {
@@ -76,7 +76,7 @@ export class Game {
         this.UP_BLOCKS.push(
             ...Game.createUpBlocks(
                 this.GAME_STATE.upAllowance,
-                this.ENGINE_REF.getAsset("./assets/button_y.png"),
+                this.ENGINE_REF.getAsset("./a/b_y.png"),
                 this.GAME_STATE.width,
                 this.GAME_STATE.height
             )
@@ -84,7 +84,7 @@ export class Game {
         this.UP_BLOCKS.forEach((e: Sprite) => this.ENGINE_REF.scene.push(e));
         this.GRID = Game.createGridElements(
             this.GAME_STATE,
-            this.ENGINE_REF.getAsset("./assets/button.png"),
+            this.ENGINE_REF.getAsset("./a/b.png"),
             (x: number, y: number) => this.onButtonPress(x,y)
         );
         // tslint:disable-next-line:typedef
@@ -146,16 +146,16 @@ export class Game {
         setTimeout(() => {
             this.chatBot.play(false).then(() => {
                 Engine.BlockInputReasons.TutorialPlaying = false;
-                // setTimeout(() => {
-                //     this.chatBot.addToQueue([
-                //         {
-                //             text: "this\nis\na\ntest!!"
-                //         }
-                //     ]);
-                //     this.chatBot.play(true);
-                // }, 2000);
             });
         }, 800);
+    }
+
+    public getEngine(): Engine {
+        return this.ENGINE_REF;
+    }
+
+    public getScore(): number {
+        return this.GAME_STATE.variables.SCORE;
     }
 
     public showOrHide(hide: boolean): void {
@@ -199,10 +199,12 @@ export class Game {
         if(hide) {
             this.SCORE_ELEMENT.x -= hideOffset;
             this.TARGET_ELEMENT.x -= hideOffset;
+            this.LEVEL_ID_ELEMENT.x -= hideOffset;
             this.chatBot.x -= hideOffset;
         } else {
             this.SCORE_ELEMENT.x += hideOffset;
             this.TARGET_ELEMENT.x += hideOffset;
+            this.LEVEL_ID_ELEMENT.x += hideOffset;
             this.chatBot.x += hideOffset;
         }
     }
@@ -227,6 +229,9 @@ export class Game {
             for (let g: number = 0; g < 2; g++) {
                 if(i < this.GAME_STATE.goals.length && g < this.GAME_STATE.goals[i].length) {
                     this.GOAL_ELEMENTS[i][g].text = TYPES[this.GAME_STATE.goals[i][g] + 1];
+                    if(this.GAME_STATE.goals[i][g] === GridTypes.EMPTY) {
+                        this.GOAL_ELEMENTS[i][g].color = "#FFFFFF00";
+                    }
                 } else {
                     this.GOAL_ELEMENTS[i][g].text = " ";
                 }
@@ -240,28 +245,6 @@ export class Game {
         this.LEVEL_ID_ELEMENT.x = this.SCORE_ELEMENT.x + (-20);
         this.TARGET_ELEMENT.text = "目標: " + this.GAME_STATE.targetScore;
         this.LEVEL_ID_ELEMENT.text = "レベル " + this.GAME_STATE.levelId;
-
-        for(let y: number = 0; y < Game.maxHeight; y++) {
-            for (let x: number = 0; x < Game.maxWidth; x++) {
-                const currButt: Button = this.GRID[y][x].button;
-                const currTxt: Text = this.GRID[y][x].text;
-                // if(x >= this.GAME_STATE.width || y >= this.GAME_STATE.height) {
-                //     currButt.scaleX = currButt.scaleY = 0;
-                //     currTxt.scaleX = currTxt.scaleY = 0;
-                // } else {
-                //     currButt.scaleX = currButt.scaleY = 1;
-                //     currTxt.scaleX = currTxt.scaleY = 1;
-                // }
-            }
-        }
-
-        // tslint:disable-next-line:prefer-for-of
-        // for(let y: number = 0; y < this.GRID.length; y++) {
-        //     // tslint:disable-next-line:prefer-for-of
-        //     for (let x: number = 0; x < this.GRID[y].length; x++) {
-        //         this.GRID[y][x].text.y = this.GRID[y][x].button.y;
-        //     }
-        // }
 
         this.updateGameViewToReflectGameState();
         this.updateGridColors();
@@ -411,9 +394,9 @@ export class Game {
                     type =_level.contents.grid[y][x];
                 }
                 textObj = new Text({
-                    x: position.x,
-                    y: position.y - 20,
-                    anchor: {x: -0.1, y: -0.35},
+                    x: position.x + 10,
+                    y: position.y - 8,
+                    anchor: mAnchor,
                     // image: obj[urls[0]],
                     width: 16,
                     height: 16,
@@ -468,7 +451,8 @@ export class Game {
         }
 
         if(
-            this.GAME_STATE.contents.grid[position.y][position.x] === GridTypes.EMPTY &&
+            (this.GAME_STATE.contents.grid[position.y][position.x] === GridTypes.EMPTY ||
+            this.GAME_STATE.contents.grid[position.y][position.x] === GridTypes.UNDEFINED) &&
             !LEVEL_EDIT_MODE
         ) {
             if(DEBUG_MODE) {
@@ -490,6 +474,8 @@ export class Game {
         }
 
         Engine.BlockInputReasons.UpdatingGameState = true;
+
+        beep(100, 1);
 
         if(LEVEL_EDIT_MODE) {
             this.GAME_STATE.contents.grid[position.y][position.x] += 1;
@@ -604,6 +590,7 @@ export class Game {
             }
         }
         this.SCORE_ELEMENT.text = `スコア: ${(score < 10 ? ("0" + score) : score)}`;
+        this.GAME_STATE.variables.SCORE = score;
         for(let i: number = 0; i < this.UP_BLOCKS.length; i++) {
             if(i < this.GAME_STATE.variables.CURR_UPS) {
                 this.UP_BLOCKS[i].x = this.UP_BLOCKS[i]._oldX;

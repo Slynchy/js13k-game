@@ -33,6 +33,6 @@ export default {
         resolve({
             kontra: true
         }),
-        // terser(TERSER_OPTIONS)
+        terser(TERSER_OPTIONS)
     ]
 }
